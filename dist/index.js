@@ -27,7 +27,7 @@ function DirSnapshot(pattern, basePath, isPrint = false) {
     return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
         // 
         pattern = path_1.default.normalize(pattern);
-        basePath = path_1.default.normalize(basePath);
+        basePath = path_1.default.resolve(basePath) + path_1.default.sep;
         // 
         let matches = glob_1.default.sync(pattern);
         let data = {};
@@ -35,55 +35,50 @@ function DirSnapshot(pattern, basePath, isPrint = false) {
         while (matches.length > 0) {
             let promises = [];
             let urls = [];
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 10; i++) {
+                // 
                 let matche = matches.pop();
                 if (!matche)
                     break;
+                matche = path_1.default.resolve(matche);
                 // File 以外は無視
                 let stats = yield fs_1.default.promises.stat(matche);
                 if (!stats.isFile()) {
                     continue;
                 }
+                let url = matche.replace(basePath, '');
+                url = path_1.default.normalize(url).replace(/\\/g, '/');
                 if (isPrint) {
                     let par = Math.floor(((length - matches.length) / length) * 100 * 100) / 100;
                     process.stdout.write(`${par} %\r`);
                 }
-                urls.push(matche);
+                urls.push(url);
                 promises.push(one(matche));
             }
             // 待つ
-            let crcs = yield Promise.all(promises);
+            let items = yield Promise.all(promises);
             for (let i = 0; i < urls.length; i++) {
-                data[urls[i]] = crcs[i];
+                data[urls[i]] = items[i];
             }
         }
         resolve(data);
-        /*
-                let xml = new xmldom.DOMImplementation();
-            //	let serializer = new xmldom.XMLSerializer();
-        
-                let dom = xml.createDocument( null, 'snapshot', null );
-                let dom2 = dom.getElementsByTagName('snapshot');
-                let node = dom2[0] as Node;
-        
-                for( let item of items ) {
-                    let elem = dom.createElement( "item" );
-                    elem.setAttribute( "url", item.filePath.replace( basePath, "" ).replace( /\\/g, '/' ) );
-                    elem.setAttribute( "crc", item.crc.toString() );
-                    node.appendChild( elem );
-                }
-        
-            //	console.log( xmlFormatter( serializer.serializeToString( dom ) ) );
-        
-                resolve( dom );
-        */
     }));
 }
 exports.DirSnapshot = DirSnapshot;
+/**
+ *
+ * @param snapShotStr
+ */
 function ReadSnapshot(snapShotStr) {
     return JSON.parse(snapShotStr);
 }
 exports.ReadSnapshot = ReadSnapshot;
+/**
+ * 変更があったファイル一覧を取得
+ * @param snapShotA
+ * @param snapShotB
+ * @param isPrint
+ */
 function DiffSnapshot(snapShotA, snapShotB, isPrint = false) {
     return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
         let result = [];
@@ -93,58 +88,32 @@ function DiffSnapshot(snapShotA, snapShotB, isPrint = false) {
             }
         }
         resolve(result);
-        /*
-        let snapshotA = xmlA.getElementsByTagName( 'snapshot' ) [ 0 ];
-        let snapshotB = xmlB.getElementsByTagName( 'snapshot' ) [ 0 ];
-
-        
-        let result = [];
-
-        let items = Array.prototype.slice.call( snapshotB.getElementsByTagName('item') ) as Element[];
-        let length = items.length;
-
-        while( items.length > 0 ) {
-
-            let item = items.pop();
-            if( !item ) continue;
-
-            let url = item.getAttribute('url');
-            if( !url ) continue;
-
-            let crcStr = item.getAttribute('crc');
-            if( !crcStr ) continue;
-
-            try {
-                let target = xpath.select1( `item[@url='${url}']`, snapshotA ) as Element; // [url='${url}]
-                let a = target.getAttribute('crc');
-
-                if( isPrint ) {
-                    let par = Math.floor( ( ( length - items.length ) / length ) * 100 * 100 ) / 100;
-                    process.stdout.write( `${par} %\r`);
-                }
-                
-                if( crcStr !== a ) {
-                    result.push( url );
-                }
-            } catch ( e ) {
-                console.log( e );
-            }
-
-        }
-
-        resolve( result );
-        */
     }));
 }
 exports.DiffSnapshot = DiffSnapshot;
+// --------------------------------------------------
+// --------------------------------------------------
+// 
+// --------------------------------------------------
+// --------------------------------------------------
+/**
+ *
+ * @param filePath
+ */
 function one(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
         filePath = path_1.default.normalize(filePath);
+        let stats = yield fs_1.default.promises.stat(filePath);
         let buffer = yield fs_1.default.promises.readFile(filePath);
         if (!buffer) {
             throw new Error();
         }
-        return crc_1.default.crc32(buffer);
+        let item = {
+            crc: crc_1.default.crc32(buffer),
+            date: stats.mtimeMs,
+            size: buffer.length
+        };
+        return item;
     });
 }
 //# sourceMappingURL=index.js.map
