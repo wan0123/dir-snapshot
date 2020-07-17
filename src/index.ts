@@ -3,12 +3,12 @@ import fs from 'fs'
 import glob from 'glob';
 import crc from 'crc';
 
-interface snapshotItem {  
+export interface SnapshotItem {  
 	crc: number,
-	date: number,
+//	date: number,
 	size: number,
 } 
-type snapshotData = { [ url: string ]: snapshotItem };
+export type SnapshotData = { [ url: string ]: SnapshotItem };
 
 /**
  * 
@@ -17,7 +17,7 @@ type snapshotData = { [ url: string ]: snapshotItem };
  * @param isPrint 
  */
 export function DirSnapshot( pattern: string, basePath: string, isPrint: boolean = false ) {
-	return new Promise<snapshotData>( async ( resolve: ( snapshot: snapshotData )=>void ) => {
+	return new Promise<SnapshotData>( async ( resolve: ( snapshot: SnapshotData )=>void ) => {
 
 		// 
 		pattern = path.normalize( pattern );
@@ -25,12 +25,12 @@ export function DirSnapshot( pattern: string, basePath: string, isPrint: boolean
 
 		// 
 		let matches = glob.sync( pattern );
-		let data: snapshotData = {};
+		let data: SnapshotData = {};
 		let length = matches.length;
 		
 		while( matches.length > 0 ) {
 
-			let promises: Promise<snapshotItem>[] = [];
+			let promises: Promise<SnapshotItem>[] = [];
 			let urls: string[] = [];
 
 			for( let i = 0; i < 10; i++ ) {
@@ -81,12 +81,22 @@ export function ReadSnapshot( snapShotStr: string ) {
 }
 
 /**
+ * 
+ * @param ssDataPath 
+ * @param data 
+ */
+export function WriteSnapshot( ssDataPath: string, data: SnapshotData ) {
+
+	fs.writeFileSync( ssDataPath, JSON.stringify( data, null, "\t" ) );
+}
+
+/**
  * 変更があったファイル一覧を取得
  * @param snapShotA 
  * @param snapShotB 
  * @param isPrint 
  */
-export function DiffSnapshot( snapShotA: snapshotData, snapShotB: snapshotData, isPrint: boolean = false ) {
+export function DiffSnapshot( snapShotA: SnapshotData, snapShotB: SnapshotData, isPrint: boolean = false ) {
 	return new Promise<string[]>( async ( resolve: ( result: string[] )=>void ) => {
 
 		let result: string[] = [];
@@ -118,16 +128,16 @@ async function one( filePath: string ) {
 
 	filePath = path.normalize( filePath );
 
-	let stats = await fs.promises.stat( filePath );
+	// let stats = await fs.promises.stat( filePath );
 
 	let buffer = await fs.promises.readFile( filePath );
 	if( !buffer ) {
 		throw new Error();
 	}
 
-	let item: snapshotItem = {
+	let item: SnapshotItem = {
 		crc: 	crc.crc32( buffer ),
-		date: 	stats.mtimeMs,
+	//	date: 	stats.mtimeMs,
 		size: 	buffer.length
 	};
 	

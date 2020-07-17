@@ -1,6 +1,6 @@
 {
   "name": "dir-snapshot",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Create a list of files in a directory.",
   "main": "dist/index.js",
   "scripts": {
